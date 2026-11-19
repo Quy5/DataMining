@@ -15,6 +15,7 @@ import os
 import altair as alt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from data_utils import (
     ATTRIBUTE_NAMES_VI,
@@ -26,6 +27,7 @@ from data_utils import (
     load_data,
     split_data,
 )
+from export_tree_svg import svg_path, tree_dot
 from id3 import ID3DecisionTree, entropy, information_gain
 
 st.set_page_config(
@@ -97,37 +99,93 @@ LEAF_FILL = {"unacc": "#FDE2E1", "acc": "#FDEBD3", "good": "#DDF0DE", "vgood": "
 
 
 @st.cache_data
-def get_dot(depth: int) -> str:
-    """Sơ đồ cây với nhãn tiếng Việt, dễ đọc cho người xem (khác bản kỹ thuật trong output/id3_tree.dot)."""
+def get_dot(depth: int, horizontal: bool) -> str:
+    """Sơ đồ cây giữ nguyên tên thuộc tính, giá trị và nhãn của car.data (safety, low, unacc…)."""
     model, _ = get_model_and_results()
-    lines = ['digraph G {', '  rankdir=TB; nodesep=0.25; ranksep=0.45;',
-             '  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", color="#94A3B8", fillcolor="#F8FAFC"];',
-             '  edge [fontname="Helvetica", fontsize=10, color="#94A3B8", fontcolor="#334155"];']
+    return tree_dot(model, depth, horizontal)
 
-    def visit(node):
-        nid = f"n{node.node_id}"
-        if node.is_leaf:
-            if node.samples_count == 0:
-                lines.append(f'  {nid} [label="{CLASS_NAME[node.prediction]}\\n(không có mẫu học)", '
-                             f'fillcolor="{LEAF_FILL[node.prediction]}", style="rounded,filled,dashed"];')
-            else:
-                lines.append(f'  {nid} [label="{CLASS_NAME[node.prediction]}\\n{fmt(node.samples_count)} mẫu", '
-                             f'fillcolor="{LEAF_FILL[node.prediction]}", color="{CLASS_COLOR[node.prediction]}"];')
-            return
-        name = ATTRIBUTE_NAMES_VI[node.attribute]
-        if node.depth >= depth:
-            lines.append(f'  {nid} [label="{name} …\\n{fmt(node.samples_count)} mẫu, đa số {node.majority_class}", '
-                         f'style="rounded,dashed", fillcolor="white"];')
-            return
-        lines.append(f'  {nid} [label="{name}?\\n{fmt(node.samples_count)} mẫu", penwidth=1.6, color="#1D4ED8"];')
-        order = VALID_ATTRIBUTE_VALUES.get(node.attribute, [])
-        for v, child in sorted(node.children.items(), key=lambda kv: order.index(kv[0]) if kv[0] in order else 99):
-            lines.append(f'  {nid} -> n{child.node_id} [label=" {VALUE_MAPPING_VI[node.attribute].get(v, v)} "];')
-            visit(child)
 
-    visit(model.root)
-    lines.append("}")
-    return "\n".join(lines)
+@st.cache_data
+def get_tree_svg(depth: int, horizontal: bool):
+    """SVG đã xuất sẵn (export_tree_svg.py); nếu thiếu thì thử gọi Graphviz trên máy; không được thì trả None."""
+    path = svg_path(depth, horizontal)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    try:
+        import subprocess
+        out = subprocess.run(["dot", "-Tsvg"], input=get_dot(depth, horizontal).encode("utf-8"),
+                             capture_output=True, check=True, timeout=30).stdout
+        return out.decode("utf-8")
+    except Exception:
+        return None
+
+
+def show_zoomable_svg(svg: str, height: int = 620) -> None:
+    """Khung xem cây: nút +/−, vừa khung, 100%, toàn màn hình; Ctrl + cuộn chuột để phóng to, kéo chuột để di chuyển."""
+    svg = svg[svg.find("<svg"):]  # bỏ phần khai báo XML/DOCTYPE
+    html = """
+<style>
+  body {margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;}
+  .bar {display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap;}
+  .bar button {border:1px solid #CBD5E1; background:#fff; border-radius:6px; padding:5px 12px;
+               font-size:15px; cursor:pointer; color:#0F172A;}
+  .bar button:hover {background:#EFF6FF; border-color:#1D4ED8;}
+  .bar button:focus-visible {outline:2px solid #1D4ED8; outline-offset:1px;}
+  #lvl {min-width:56px; text-align:center; font-weight:600; color:#1D4ED8;}
+  .hint {color:#64748B; font-size:13px; margin-left:6px;}
+  #wrap {height:%(h)dpx; overflow:auto; border:1px solid #E2E8F0; border-radius:8px; background:#fff;
+         cursor:grab; user-select:none;}
+  #wrap.drag {cursor:grabbing;}
+  #wrap:fullscreen {height:100vh; border:0; border-radius:0;}
+  #wrap svg {display:block; margin:8px;}
+</style>
+<div class="bar">
+  <button id="zout" title="Thu nhỏ">−</button><span id="lvl">100%%</span><button id="zin" title="Phóng to">+</button>
+  <button id="fit">Vừa khung</button><button id="one">100%%</button><button id="fs">⛶ Toàn màn hình</button>
+  <span class="hint">Ctrl + cuộn chuột để phóng to/thu nhỏ, kéo chuột để di chuyển</span>
+</div>
+<div id="wrap">%(svg)s</div>
+<script>
+(function () {
+  const wrap = document.getElementById("wrap"), svg = wrap.querySelector("svg"), lvl = document.getElementById("lvl");
+  const vb = svg.viewBox.baseVal, W = vb.width, H = vb.height;
+  let s = 1;
+  function apply(next, cx, cy) {
+    next = Math.min(4, Math.max(0.2, next));
+    cx = cx ?? wrap.clientWidth / 2; cy = cy ?? wrap.clientHeight / 2;
+    const px = (wrap.scrollLeft + cx) / s, py = (wrap.scrollTop + cy) / s;
+    s = next;
+    svg.setAttribute("width", W * s); svg.setAttribute("height", H * s);
+    wrap.scrollLeft = px * s - cx; wrap.scrollTop = py * s - cy;
+    lvl.textContent = Math.round(s * 100) + "%%";
+  }
+  const fit = () => apply(Math.min((wrap.clientWidth - 20) / W, 1.6), 0, 0);
+  document.getElementById("zin").onclick = () => apply(s * 1.25);
+  document.getElementById("zout").onclick = () => apply(s / 1.25);
+  document.getElementById("fit").onclick = fit;
+  document.getElementById("one").onclick = () => apply(1);
+  const fs = document.getElementById("fs");
+  if (document.fullscreenEnabled) {
+    fs.onclick = () => document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen();
+    document.addEventListener("fullscreenchange", () => setTimeout(fit, 50));
+  } else { fs.style.display = "none"; }
+  wrap.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const r = wrap.getBoundingClientRect();
+    apply(s * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - r.left, e.clientY - r.top);
+  }, {passive: false});
+  let d = null;
+  wrap.addEventListener("mousedown", (e) => { d = {x: e.clientX, y: e.clientY, l: wrap.scrollLeft, t: wrap.scrollTop}; wrap.classList.add("drag"); });
+  window.addEventListener("mouseup", () => { d = null; wrap.classList.remove("drag"); });
+  window.addEventListener("mousemove", (e) => { if (d) { wrap.scrollLeft = d.l - (e.clientX - d.x); wrap.scrollTop = d.t - (e.clientY - d.y); } });
+  svg.removeAttribute("width"); svg.removeAttribute("height");
+  fit();
+})();
+</script>
+""" % {"h": height, "svg": svg}
+    components.html(html, height=height + 56)
 
 
 @st.cache_resource
@@ -154,10 +212,8 @@ def get_rules_df() -> pd.DataFrame:
     model, _ = get_model_and_results()
     rows = []
     for r in model.get_rules():
-        cond = " và ".join(
-            f"{ATTRIBUTE_NAMES_VI[a]} = {VALUE_MAPPING_VI[a].get(v, v)}" for a, v in r["conditions"]
-        )
-        rows.append({"Nếu": cond, "Thì": CLASS_NAME[r["prediction"]], "Nhãn": r["prediction"],
+        cond = "  VÀ  ".join(f"{a} = {v}" for a, v in r["conditions"])
+        rows.append({"Nếu": cond, "Thì": r["prediction"], "Nhãn": r["prediction"],
                      "Số mẫu": r["samples"], "Số điều kiện": len(r["conditions"])})
     return pd.DataFrame(rows).sort_values("Số mẫu", ascending=False, ignore_index=True)
 
@@ -221,15 +277,15 @@ with tab_pred:
                 st.markdown(f"**{group}**")
                 for a in attrs:
                     st.segmented_control(
-                        ATTRIBUTE_NAMES_VI[a],
+                        a,  # tên thuộc tính gốc trong car.data
                         options=VALID_ATTRIBUTE_VALUES[a],
-                        format_func=lambda v, a=a: VALUE_MAPPING_VI[a][v],
+                        help=ATTRIBUTE_NAMES_VI[a],
                         key=f"in_{a}",
                         required=True,  # luôn có đúng một giá trị được chọn
                     )
 
     sample = {a: st.session_state.get(f"in_{a}") for a in FEATURE_COLUMNS}
-    missing = [ATTRIBUTE_NAMES_VI[a].lower() for a, v in sample.items() if v is None]
+    missing = [a for a, v in sample.items() if v is None]
 
     with right:
         st.subheader("Kết quả")
@@ -259,11 +315,11 @@ with tab_pred:
                 a, v = step["attribute"], step["checked_value"]
                 g = get_node_index()[step["node_id"]].gain_table.get(a, 0.0)
                 items.append(
-                    f'<li>{ATTRIBUTE_NAMES_VI[a]}: <span class="val">{VALUE_MAPPING_VI[a].get(v, v)}</span> '
+                    f'<li><span class="val">{a} = {v}</span> '
                     f'<span class="muted">(Gain cao nhất = {g:.3f}; nút có {fmt(step["samples_count"])} mẫu học)</span></li>'
                 )
             leaf = res["path"][-1] if res["path"] and res["path"][-1].get("is_leaf") else None
-            items.append(f'<li>Kết luận: <span class="val">{CLASS_NAME[pred]} ({pred})</span></li>')
+            items.append(f'<li>Kết luận: <span class="val">{pred}</span> ({CLASS_NAME[pred]})</li>')
             st.markdown('<ol class="path">' + "".join(items) + "</ol>", unsafe_allow_html=True)
 
             if res["is_fallback"]:
@@ -283,7 +339,7 @@ with tab_pred:
             if len(row):
                 truth = row.iloc[0][TARGET_COLUMN]
                 verdict = "trùng với dự đoán" if truth == pred else "khác với dự đoán"
-                st.caption(f"Nhãn trong bộ dữ liệu gốc của cấu hình này: {CLASS_NAME[truth]} ({truth}), {verdict}.")
+                st.caption(f"Nhãn trong bộ dữ liệu gốc của cấu hình này: {truth} ({CLASS_NAME[truth]}), {verdict}.")
 
 # ================================================================== 2. CÂY ID3
 with tab_tree:
@@ -294,12 +350,26 @@ with tab_tree:
               help=f"{stats['leaf_nodes']} lá, trong đó {stats['empty_leaves']} lá không có mẫu học.")
     c4.metric("Độ sâu", stats["max_depth"])
 
-    g1, g2 = st.columns([1, 1.6], gap="large")
+    st.subheader("Sơ đồ cây")
+    t1, t2 = st.columns([1.4, 1])
+    depth = t1.slider("Số tầng hiển thị", 1, 6, 2, help="Chỉ thay đổi hình vẽ, không thay đổi mô hình.")
+    horizontal = t2.toggle("Vẽ ngang (trái → phải)", value=depth >= 3,
+                           help="Khi hiện nhiều tầng, vẽ ngang giúp chữ không bị thu nhỏ.")
+    svg = get_tree_svg(depth, horizontal)
+    if svg:
+        show_zoomable_svg(svg)
+        st.download_button("Tải sơ đồ (SVG, phóng to không vỡ nét)", svg.encode("utf-8"),
+                           file_name=f"id3_tree_{depth}_tang.svg", mime="image/svg+xml")
+    else:  # không có SVG và không có Graphviz: dùng hình vẽ mặc định của Streamlit
+        st.graphviz_chart(get_dot(depth, horizontal), width="stretch")
+    st.caption("Tên thuộc tính, giá trị và nhãn giữ nguyên như trong car.data; n là số mẫu học tại nút.")
+
+    g1, _ = st.columns([1, 1], gap="large")
     with g1:
         st.subheader("Chọn nút gốc")
         st.write(f"ID3 tính Information Gain của 6 thuộc tính trên {fmt(n_train)} mẫu học và chọn thuộc tính lớn nhất.")
         gain = pd.DataFrame(
-            [{"Thuộc tính": ATTRIBUTE_NAMES_VI[a], "Gain": g,
+            [{"Thuộc tính": a, "Gain": g,
               "Loại": "Nút gốc" if a == stats["root_attribute"] else "Khác"}
              for a, g in stats["root_gain_table"].items()]
         )
@@ -317,11 +387,6 @@ with tab_tree:
         )
         text = chart.mark_text(align="left", dx=4).encode(text=alt.Text("Gain:Q", format=".3f"), color=alt.value("#475569"))
         st.altair_chart(chart + text)
-    with g2:
-        st.subheader("Sơ đồ cây")
-        depth = st.slider("Số tầng hiển thị", 1, 4, 2, help="Chỉ thay đổi hình vẽ, không thay đổi mô hình.")
-        st.graphviz_chart(get_dot(depth), width="stretch")
-
     with st.expander("Cách tính tại nút gốc (công thức theo bài giảng)", expanded=False):
         train = get_train()
         root = stats["root_attribute"]
@@ -338,16 +403,16 @@ with tab_tree:
         rows = []
         for a in FEATURE_COLUMNS:
             gain_a, base_ent, _ = information_gain(train, a, TARGET_COLUMN)
-            rows.append({"Thuộc tính": f"{ATTRIBUTE_NAMES_VI[a]} ({a})", "Info_A(D)": base_ent - gain_a, "Gain(A)": gain_a})
+            rows.append({"Thuộc tính": a, "Info_A(D)": base_ent - gain_a, "Gain(A)": gain_a})
         st.dataframe(pd.DataFrame(rows).sort_values("Gain(A)", ascending=False), hide_index=True,
                      column_config={k: st.column_config.NumberColumn(format="%.4f") for k in ["Info_A(D)", "Gain(A)"]})
-        st.markdown(f"**Bước 3.** Gain({root}) lớn nhất nên {ATTRIBUTE_NAMES_VI[root].lower()} làm nút gốc. "
+        st.markdown(f"**Bước 3.** Gain({root}) lớn nhất nên {root} làm nút gốc. "
                     "Các phân hoạch của nút gốc:")
         part = []
         for v in VALID_ATTRIBUTE_VALUES[root]:
             dj = train[train[root] == v][TARGET_COLUMN]
             c = dj.value_counts().reindex(CLASS_ORDER, fill_value=0)
-            part.append({"Giá trị": VALUE_MAPPING_VI[root][v], "|Dⱼ|": len(dj), **{k: int(c[k]) for k in CLASS_ORDER},
+            part.append({"Giá trị": v, "|Dⱼ|": len(dj), **{k: int(c[k]) for k in CLASS_ORDER},
                          "Info(Dⱼ)": entropy(dj.tolist())})
         st.dataframe(pd.DataFrame(part), hide_index=True,
                      column_config={"Info(Dⱼ)": st.column_config.NumberColumn(format="%.4f")})
@@ -358,7 +423,7 @@ with tab_tree:
 
     st.subheader("Luật IF–THEN")
     rules = get_rules_df()
-    pick = st.segmented_control("Lọc theo kết luận", ["Tất cả"] + [CLASS_NAME[c] for c in CLASS_ORDER], default="Tất cả", required=True)
+    pick = st.segmented_control("Lọc theo kết luận", ["Tất cả"] + CLASS_ORDER, default="Tất cả", required=True)
     shown = rules if pick in (None, "Tất cả") else rules[rules["Thì"] == pick]
     st.caption(f"{len(shown)} luật, sắp theo số mẫu học ủng hộ.")
     st.dataframe(shown.drop(columns=["Nhãn"]), hide_index=True, height=320)
@@ -451,14 +516,13 @@ with tab_data:
         st.subheader("Ý nghĩa thuộc tính")
         st.dataframe(pd.DataFrame([
             {"Thuộc tính": a, "Ý nghĩa": ATTRIBUTE_NAMES_VI[a],
-             "Giá trị": ", ".join(VALUE_MAPPING_VI[a][v] for v in VALID_ATTRIBUTE_VALUES[a])}
+             "Giá trị": ", ".join(VALID_ATTRIBUTE_VALUES[a])}
             for a in FEATURE_COLUMNS]), hide_index=True)
     with d2:
         st.subheader("Bảng dữ liệu")
         f1, f2 = st.columns(2)
         fc = f1.multiselect("Nhãn", CLASS_ORDER)
-        fs = f2.multiselect("Mức an toàn", VALID_ATTRIBUTE_VALUES["safety"],
-                            format_func=lambda v: VALUE_MAPPING_VI["safety"][v])
+        fs = f2.multiselect("safety", VALID_ATTRIBUTE_VALUES["safety"])
         view = df
         if fc:
             view = view[view[TARGET_COLUMN].isin(fc)]

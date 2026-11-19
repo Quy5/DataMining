@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ID3 – Car Evaluation | Nhóm 06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Code+Pro&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<style>
+  :root {--primary:#1D4ED8; --text:#31333F; --muted:rgba(49,51,63,.6); --border:rgba(49,51,63,.2);
+         --soft:#F0F2F6; --radius:8px;}
+  * {box-sizing:border-box;}
+  html {font-size:16px;}
+  body {margin:0; font-family:"Source Sans 3","Source Sans Pro",system-ui,sans-serif; color:var(--text); background:#fff; line-height:1.6;}
+  .page {max-width:1180px; margin:0 auto; padding:2rem 1rem 4rem;}
+  h1 {font-size:2.75rem; font-weight:700; line-height:1.2; margin:0 0 .6rem; letter-spacing:-.005em;}
+  h3 {font-size:1.75rem; font-weight:600; margin:1.2rem 0 .6rem; line-height:1.3;}
+  p {margin:0 0 1rem;}
+  .caption {font-size:.875rem; color:var(--muted); margin:0 0 1rem;}
+  button {font-family:inherit;}
+  :focus-visible {outline:2px solid var(--primary); outline-offset:2px;}
+
+  /* tabs */
+  .tabs {display:flex; gap:2rem; border-bottom:1px solid var(--soft); margin:1.2rem 0 1rem; overflow-x:auto;}
+  .tab {background:none; border:0; padding:.6rem 0; font-size:1rem; color:var(--text); cursor:pointer;
+        border-bottom:3px solid transparent; margin-bottom:-1px; white-space:nowrap;}
+  .tab:hover {color:var(--primary);}
+  .tab[aria-selected="true"] {color:var(--primary); border-bottom-color:var(--primary);}
+  .panel[hidden] {display:none;}
+
+  .cols {display:grid; gap:3rem;}
+  .c2 {grid-template-columns:1.05fr 1fr;}
+  .c2e {grid-template-columns:1fr 1fr;}
+  .c4 {grid-template-columns:repeat(4,1fr); gap:1rem;}
+  .cd {grid-template-columns:1fr 1.4fr;}
+  @media (max-width:820px){ .c2,.c2e,.cd {grid-template-columns:1fr; gap:1rem;} .c4 {grid-template-columns:1fr 1fr;} h1{font-size:2rem;} }
+
+  /* buttons */
+  .btn {border:1px solid var(--border); background:#fff; border-radius:var(--radius); padding:.4rem .75rem;
+        font-size:1rem; color:var(--text); cursor:pointer; min-height:2.5rem; line-height:1.3;}
+  .btn:hover {border-color:var(--primary); color:var(--primary);}
+  .btn:active {background:var(--primary); color:#fff;}
+  .presets {display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1rem;}
+  @media (max-width:820px){ .presets {grid-template-columns:1fr 1fr;} }
+
+  .box {border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:1rem;}
+  .box > b {display:block; margin-bottom:.5rem;}
+  .field {margin-bottom:.75rem;}
+  .label {font-size:.875rem; display:flex; align-items:center; gap:.35rem; margin-bottom:.25rem;}
+  .help {position:relative; display:inline-flex; width:16px; height:16px; border-radius:50%; border:1px solid var(--muted);
+         color:var(--muted); font-size:11px; align-items:center; justify-content:center; cursor:help;}
+  .help:hover::after, .help:focus::after {content:attr(data-tip); position:absolute; left:22px; top:-6px; background:#262730;
+         color:#fff; padding:4px 8px; border-radius:6px; white-space:nowrap; font-size:.8rem; z-index:5;}
+  .seg {display:inline-flex; flex-wrap:wrap; gap:.5rem;}
+  .seg button {border:1px solid var(--border); background:#fff; border-radius:var(--radius); padding:.25rem .75rem;
+               font-size:1rem; cursor:pointer; color:var(--text); min-height:2.5rem;}
+  .seg button:hover {border-color:var(--primary); color:var(--primary);}
+  .seg button[aria-pressed="true"] {border-color:var(--primary); color:var(--primary); background:rgba(29,78,216,.08);}
+
+  /* grade */
+  .grade {display:flex; flex-direction:column; gap:6px; margin:4px 0 12px;}
+  .grade-row {display:flex; align-items:center; gap:10px;}
+  .grade-bar {height:34px; display:flex; align-items:center; padding:0 12px; color:#fff; font-weight:600;
+              border-radius:4px 0 0 4px; opacity:.28;
+              clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);}
+  .grade-bar.on {opacity:1;}
+  .grade-tag {font-weight:700; font-size:1.05rem;}
+  @media (prefers-reduced-motion:no-preference){ .grade-bar {transition:opacity .2s;} }
+  .path {margin:0 0 1rem; padding-left:1.4rem;}
+  .path li {margin:4px 0;}
+  .val {font-weight:600;}
+  .muted {opacity:.7; font-size:.9rem;}
+  .alert {border-radius:var(--radius); padding:1rem; margin-bottom:1rem;}
+  .warn {background:rgba(255,193,7,.12); color:#926C05;}
+  .info {background:rgba(28,131,225,.1); color:#004280;}
+
+  /* metric */
+  .metric .ml {font-size:.875rem; display:flex; gap:.35rem; align-items:center;}
+  .metric .mv {font-size:2.25rem; line-height:1.3; padding:.2rem 0;}
+  .delta {display:inline-block; font-size:.875rem; border-radius:999px; padding:0 .5rem;}
+  .delta.up {color:#09AB3B; background:rgba(9,171,59,.1);}
+  .delta.off {color:var(--muted); background:var(--soft);}
+
+  /* tables */
+  .tbl {border:1px solid var(--border); border-radius:var(--radius); overflow:auto; margin-bottom:1rem;}
+  table {border-collapse:collapse; width:100%; font-size:.875rem;}
+  th, td {padding:.3rem .6rem; border-bottom:1px solid rgba(49,51,63,.1); border-right:1px solid rgba(49,51,63,.1); text-align:left; white-space:nowrap;}
+  th {background:#FAFAFB; color:var(--muted); font-weight:400; position:sticky; top:0; z-index:1;}
+  td.num, th.num {text-align:right;}
+  tr:last-child td {border-bottom:0;}
+
+  details {border:1px solid var(--border); border-radius:var(--radius); margin:1rem 0;}
+  summary {padding:.75rem 1rem; cursor:pointer; list-style:none; display:flex; justify-content:space-between;}
+  summary::after {content:"⌄"; transition:transform .2s;}
+  details[open] summary::after {transform:rotate(180deg);}
+  summary::-webkit-details-marker {display:none;}
+  details > .inner {padding:0 1rem 1rem;}
+  .tex {overflow-x:auto; text-align:center; margin:.6rem 0 1rem; font-size:1.05rem;}
+
+  /* charts */
+  .hbar {display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:center; font-size:.85rem;}
+  .hbar .lab {text-align:right; color:#475569;}
+  .hbar .track {position:relative; height:22px; margin-right:44px;}
+  .hbar .track span {position:absolute; top:50%; transform:translateY(-50%); padding-left:6px; color:#475569;}
+  .hbar .b {height:22px;}
+  .axis {font-size:.75rem; color:var(--muted); grid-column:2; display:flex; justify-content:space-between; margin-right:44px;}
+
+  /* tree viewer */
+  .row2 {display:grid; grid-template-columns:1.4fr 1fr; gap:1rem; align-items:end; margin-bottom:.75rem;}
+  @media (max-width:820px){ .row2 {grid-template-columns:1fr;} }
+  input[type=range] {width:100%; accent-color:var(--primary);}
+  .switch {display:flex; align-items:center; gap:.5rem; cursor:pointer; font-size:.95rem;}
+  .switch input {appearance:none; width:2rem; height:1.1rem; background:#D5DAE5; border-radius:999px; position:relative; cursor:pointer; margin:0;}
+  .switch input::after {content:""; position:absolute; width:.85rem; height:.85rem; border-radius:50%; background:#fff; top:.125rem; left:.15rem; transition:left .15s;}
+  .switch input:checked {background:var(--primary);}
+  .switch input:checked::after {left:1rem;}
+  .zbar {display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap;}
+  .zbar button {border:1px solid #CBD5E1; background:#fff; border-radius:6px; padding:5px 12px; font-size:15px; cursor:pointer; color:#0F172A;}
+  .zbar button:hover {background:#EFF6FF; border-color:#1D4ED8;}
+  #lvl {min-width:56px; text-align:center; font-weight:600; color:#1D4ED8;}
+  .hint {color:#64748B; font-size:13px; margin-left:6px;}
+  #wrap {height:620px; overflow:auto; border:1px solid #E2E8F0; border-radius:8px; background:#fff; cursor:grab; user-select:none;}
+  #wrap.drag {cursor:grabbing;}
+  #wrap:fullscreen {height:100vh; border:0; border-radius:0;}
+  #wrap svg {display:block; margin:8px;}
+  .multi {display:flex; flex-wrap:wrap; gap:.4rem; border:1px solid var(--border); border-radius:var(--radius); padding:.35rem; min-height:2.5rem;}
+  .chip {border:1px solid var(--border); background:#fff; border-radius:6px; padding:.1rem .6rem; cursor:pointer; font-size:.9rem;}
+  .chip[aria-pressed="true"] {background:var(--primary); border-color:var(--primary); color:#fff;}
+  a {color:var(--primary);}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Phân lớp mức độ chấp nhận ô tô bằng cây quyết định ID3</h1>
+  <p class="caption" id="subtitle"></p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="pred">Dự đoán</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="tree">Cây ID3</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="eval">Đánh giá</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="data">Dữ liệu</button>
+  </div>
+
+  <!-- ===================== DỰ ĐOÁN ===================== -->
+  <section class="panel" id="p-pred">
+    <div class="cols c2">
+      <div>
+        <h3>Thông số xe</h3>
+        <p>Ví dụ có sẵn:</p>
+        <div class="presets" id="presets"></div>
+        <div id="groups"></div>
+      </div>
+      <div>
+        <h3>Kết quả</h3>
+        <div id="result"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CÂY ID3 ===================== -->
+  <section class="panel" id="p-tree" hidden>
+    <div class="cols c4" id="treeMetrics"></div>
+    <h3>Sơ đồ cây</h3>
+    <div class="row2">
+      <label><span class="label">Số tầng hiển thị: <b id="depthVal">2</b></span>
+        <input type="range" id="depth" min="1" max="6" value="2"></label>
+      <label class="switch"><input type="checkbox" id="horiz"> Vẽ ngang (trái → phải)</label>
+    </div>
+    <div class="zbar">
+      <button id="zout" title="Thu nhỏ">−</button><span id="lvl">100%</span><button id="zin" title="Phóng to">+</button>
+      <button id="fit">Vừa khung</button><button id="one">100%</button><button id="fs">⛶ Toàn màn hình</button>
+      <span class="hint">Ctrl + cuộn chuột để phóng to/thu nhỏ, kéo chuột để di chuyển</span>
+    </div>
+    <div id="wrap"></div>
+    <p style="margin-top:.75rem"><a class="btn" id="dl" download style="text-decoration:none;display:inline-block">Tải sơ đồ (SVG, phóng to không vỡ nét)</a></p>
+    <p class="caption">Tên thuộc tính, giá trị và nhãn giữ nguyên như trong car.data; n là số mẫu học tại nút.</p>
+
+    <div class="cols c2e"><div>
+      <h3>Chọn nút gốc</h3>
+      <p id="rootIntro"></p>
+      <div id="gainChart"></div>
+    </div><div></div></div>
+
+    <details>
+      <summary>Cách tính tại nút gốc (công thức theo bài giảng)</summary>
+      <div class="inner" id="rootCalc"></div>
+    </details>
+
+    <h3>Luật IF–THEN</h3>
+    <div class="label">Lọc theo kết luận</div>
+    <div class="seg" id="ruleFilter" style="margin-bottom:.75rem"></div>
+    <p class="caption" id="ruleCount"></p>
+    <div class="tbl" style="max-height:320px"><table id="ruleTable"></table></div>
+  </section>
+
+  <!-- ===================== ĐÁNH GIÁ ===================== -->
+  <section class="panel" id="p-eval" hidden>
+    <div class="cols c4" id="evalMetrics"></div>
+    <p class="caption" id="evalCaption" style="margin-top:1rem"></p>
+    <div class="cols c2e">
+      <div><h3>Ma trận nhầm lẫn</h3><div class="tbl"><table id="cm"></table></div><p class="caption" id="cmCap"></p></div>
+      <div><h3>Theo từng nhãn</h3><div class="tbl"><table id="perClass"></table></div>
+        <p class="caption">TP, FP, FN, TN đọc từ ma trận nhầm lẫn bên trái theo từng lớp cᵢ.</p></div>
+    </div>
+    <details>
+      <summary>Công thức đánh giá (theo bài giảng)</summary>
+      <div class="inner">
+        <p>Độ chính xác trên tập kiểm thử, với o(x) là lớp hệ thống dự đoán và c(x) là lớp thực sự của ví dụ x:</p>
+        <div class="tex" data-tex="Accuracy = \frac{1}{|D\_test|}\sum_{x \in D\_test} Identical(o(x), c(x))"></div>
+        <p>Với từng lớp cᵢ (TP, FP, TN, FN lấy từ ma trận nhầm lẫn):</p>
+        <div class="tex" data-tex="Accuracy(c_i)=\frac{TP_i+TN_i}{TP_i+FP_i+TN_i+FN_i}\qquad Precision(c_i)=\frac{TP_i}{TP_i+FP_i}"></div>
+        <div class="tex" data-tex="Recall(c_i)=\frac{TP_i}{TP_i+FN_i}\qquad F1=2\times\frac{Precision\times Recall}{Precision+Recall}"></div>
+        <p>Macro-F1 là trung bình F1 của 4 lớp (nhóm bổ sung vì dữ liệu lệch lớp). Hold-out: D_train và D_test không giao nhau; bài giảng gợi ý tỷ lệ 2/3–1/3, nhóm dùng 80/20 để tập học đủ các tổ hợp hơn. Cross-validation: chia D thành k = 10 fold phân tầng, mỗi lần 1 fold làm tập kiểm thử, lấy trung bình k kết quả.</p>
+      </div>
+    </details>
+    <h3>Mô hình sai ở đâu</h3>
+    <p id="errText"></p>
+    <details>
+      <summary id="cvSum"></summary>
+      <div class="inner"><p id="cvText"></p><div class="tbl"><table id="cvTable"></table></div></div>
+    </details>
+  </section>
+
+  <!-- ===================== DỮ LIỆU ===================== -->
+  <section class="panel" id="p-data" hidden>
+    <div class="cols cd">
+      <div>
+        <h3>Phân bố nhãn</h3>
+        <div id="distChart"></div>
+        <p class="caption" style="margin-top:.75rem">1.728 cấu hình xe, đủ mọi tổ hợp của 6 thuộc tính, không thiếu giá trị. Nhãn unacc chiếm 70%, nên cần xem Macro-F1 thay vì chỉ Accuracy.</p>
+        <h3>Ý nghĩa thuộc tính</h3>
+        <div class="tbl"><table id="attrTable"></table></div>
+      </div>
+      <div>
+        <h3>Bảng dữ liệu</h3>
+        <div class="cols c2e" style="gap:1rem">
+          <div><div class="label">Nhãn</div><div class="multi" id="fClass"></div></div>
+          <div><div class="label">safety</div><div class="multi" id="fSafety"></div></div>
+        </div>
+        <p class="caption" id="rowCount" style="margin-top:.75rem"></p>
+        <div class="tbl" style="max-height:420px"><table id="dataTable"></table></div>
+      </div>
+    </div>
+    <p class="caption">Nguồn: Bohanec, M. (1988). Car Evaluation. UCI Machine Learning Repository, <a href="https://archive.ics.uci.edu/dataset/19/car+evaluation" target="_blank" rel="noopener">https://archive.ics.uci.edu/dataset/19/car+evaluation</a></p>
+  </section>
+</div>
+
+<script>
+const D = /*__DATA__*/null;
+const FEAT = ["buying","maint","doors","persons","lug_boot","safety"];
+const CLASSES = ["unacc","acc","good","vgood"];
+const COLOR = {unacc:"#B42318", acc:"#B54708", good:"#2E7D32", vgood:"#1D4ED8"};
+const R = D.results, ev = R.id3_evaluation, base = R.baseline_evaluation, cv = R.cross_validation,
+      el = R.empty_leaf_analysis, st = D.stats;
+const nTrain = R.dataset.train_samples, nTest = R.dataset.test_samples;
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString("de-DE");
+const f4 = (x) => x.toFixed(4);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+$("subtitle").textContent = `Nhóm 06, lớp QT01, môn Khai phá dữ liệu. Thuật toán ID3 tự cài đặt, học từ ${fmt(nTrain)} mẫu của bộ UCI Car Evaluation; độ chính xác trên ${nTest} mẫu kiểm tra: ${(ev.accuracy*100).toFixed(2)}%.`;
+
+// ---------- tabs
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+  document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== "p-" + t.dataset.tab);
+  if (t.dataset.tab === "tree") loadTree();
+});
+
+function table(el, cols, rows, numCols = []) {
+  el.innerHTML = "<thead><tr>" + cols.map(c => `<th class="${numCols.includes(c) ? "num" : ""}">${esc(c)}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map((v, i) => `<td class="${numCols.includes(cols[i]) ? "num" : ""}">${v}</td>`).join("") + "</tr>").join("") + "</tbody>";
+}
+function metric(label, value, delta, off, help) {
+  const h = help ? `<span class="help" tabindex="0" data-tip="${esc(help)}">?</span>` : "";
+  const d = delta ? `<div><span class="delta ${off ? "off" : "up"}">${off ? "" : "↑ "}${esc(delta)}</span></div>` : "";
+  return `<div class="metric"><div class="ml">${esc(label)}${h}</div><div class="mv">${esc(value)}</div>${d}</div>`;
+}
+function hbars(el, items, max, ticks) {
+  el.innerHTML = '<div class="hbar">' + items.map(it =>
+    `<div class="lab">${esc(it.label)}</div><div class="track"><div class="b" style="width:${(it.value / max * 100).toFixed(2)}%;background:${it.color}" title="${esc(it.label)}: ${it.tip}"></div><span style="left:${(it.value / max * 100).toFixed(2)}%">${it.text}</span></div>`
+  ).join("") + `<div class="axis">${ticks.map(t => `<span>${t}</span>`).join("")}</div></div>`;
+}
+
+// ================= DỰ ĐOÁN
+const PRESETS = {
+  "Xe không phù hợp": {buying:"vhigh", maint:"vhigh", doors:"2", persons:"2", lug_boot:"small", safety:"low"},
+  "Xe chấp nhận được": {buying:"med", maint:"med", doors:"4", persons:"4", lug_boot:"med", safety:"med"},
+  "Xe tốt": {buying:"low", maint:"low", doors:"4", persons:"4", lug_boot:"big", safety:"med"},
+  "Xe rất tốt": {buying:"low", maint:"low", doors:"4", persons:"4", lug_boot:"big", safety:"high"},
+};
+const GROUPS = [["Chi phí", ["buying","maint"]], ["Kích thước", ["doors","persons","lug_boot"]], ["An toàn", ["safety"]]];
+const input = {buying:"med", maint:"med", doors:"4", persons:"4", lug_boot:"med", safety:"high"};
+
+$("presets").innerHTML = Object.keys(PRESETS).map(k => `<button class="btn" data-p="${k}">${k}</button>`).join("");
+$("presets").onclick = (e) => { const p = e.target.dataset.p; if (p) { Object.assign(input, PRESETS[p]); syncSeg(); predict(); } };
+$("groups").innerHTML = GROUPS.map(([g, attrs]) => `<div class="box"><b>${g}</b>` + attrs.map(a =>
+  `<div class="field"><div class="label">${a}<span class="help" tabindex="0" data-tip="${esc(D.attrVi[a])}">?</span></div>
+   <div class="seg" role="group" aria-label="${a}">${D.values[a].map(v => `<button data-a="${a}" data-v="${v}">${v}</button>`).join("")}</div></div>`
+).join("") + "</div>").join("");
+$("groups").onclick = (e) => { const b = e.target.closest("button[data-a]"); if (b) { input[b.dataset.a] = b.dataset.v; syncSeg(); predict(); } };
+function syncSeg() { document.querySelectorAll("#groups button[data-a]").forEach(b => b.setAttribute("aria-pressed", input[b.dataset.a] === b.dataset.v)); }
+
+function predictWithPath(sample) {
+  let cur = D.tree; const path = []; let fallback = null;
+  while (!cur.is_leaf) {
+    const a = cur.attribute, v = sample[a];
+    path.push({node: cur, a, v});
+    if (cur.children && cur.children[v]) cur = cur.children[v];
+    else { fallback = `Giá trị '${v}' của thuộc tính '${a}' không có nhánh tương ứng. Sử dụng nhãn đa số (${cur.majority_class}) tại nút ID ${cur.node_id}.`; break; }
+  }
+  return {pred: fallback ? cur.majority_class : cur.prediction, leaf: fallback ? null : cur, path, fallback};
+}
+const ROWS = D.rows;
+const TRUTH = new Map(ROWS.map(r => [r.slice(0, 6).join("|"), r[6]]));
+
+function predict() {
+  const res = predictWithPath(input), pred = res.pred;
+  let h = '<div class="grade">' + CLASSES.map((c, i) =>
+    `<div class="grade-row"><div class="grade-bar${c === pred ? " on" : ""}" style="width:${40 + i * 12}%;background:${COLOR[c]}">${c}</div>${c === pred ? `<span class="grade-tag">◀ ${D.classVi[c]}</span>` : ""}</div>`
+  ).join("") + "</div>";
+  h += `<p>${esc(D.classDesc[pred])}</p><p style="margin-bottom:.25rem"><b>Cây đã đi qua các bước:</b></p><ol class="path">`;
+  res.path.forEach(s => {
+    const g = (s.node.gain_table || {})[s.a] || 0;
+    h += `<li><span class="val">${s.a} = ${s.v}</span> <span class="muted">(Gain cao nhất = ${g.toFixed(3)}; nút có ${fmt(s.node.samples_count)} mẫu học)</span></li>`;
+  });
+  h += `<li>Kết luận: <span class="val">${pred}</span> (${D.classVi[pred]})</li></ol>`;
+  if (res.fallback) h += `<div class="alert warn">${esc(res.fallback)}</div>`;
+  else if (res.leaf.samples_count === 0)
+    h += `<div class="alert warn">Tập huấn luyện không có xe nào giống cấu hình này, nên cây lấy nhãn chiếm đa số ở nút phía trên. Kết quả này kém tin cậy: trên tập kiểm tra, nhóm trường hợp này chỉ đúng ${el.empty_leaf_correct}/${el.empty_leaf_samples}.</div>`;
+  else {
+    const dist = Object.entries(res.leaf.class_distribution).map(([k, v]) => `${k}: ${v}`).join(", ");
+    h += `<p class="caption">Nút lá này có ${res.leaf.samples_count} mẫu học (${dist}).</p>`;
+  }
+  const truth = TRUTH.get(FEAT.map(a => input[a]).join("|"));
+  if (truth) h += `<p class="caption">Nhãn trong bộ dữ liệu gốc của cấu hình này: ${truth} (${D.classVi[truth]}), ${truth === pred ? "trùng với dự đoán" : "khác với dự đoán"}.</p>`;
+  $("result").innerHTML = h;
+}
+syncSeg(); predict();
+
+// ================= CÂY ID3
+$("treeMetrics").innerHTML = metric("Nút gốc", st.root_attribute) + metric("Số nút", String(st.total_nodes)) +
+  metric("Số luật có mẫu", String(st.rules_with_support), "", false, `${st.leaf_nodes} lá, trong đó ${st.empty_leaves} lá không có mẫu học.`) +
+  metric("Độ sâu", String(st.max_depth));
+
+const wrap = $("wrap"), lvl = $("lvl"); let svg = null, W = 1, H = 1, s = 1; const cache = {};
+function apply(next, cx, cy) {
+  if (!svg) return;
+  next = Math.min(4, Math.max(0.2, next));
+  cx = cx ?? wrap.clientWidth / 2; cy = cy ?? wrap.clientHeight / 2;
+  const px = (wrap.scrollLeft + cx) / s, py = (wrap.scrollTop + cy) / s;
+  s = next; svg.setAttribute("width", W * s); svg.setAttribute("height", H * s);
+  wrap.scrollLeft = px * s - cx; wrap.scrollTop = py * s - cy;
+  lvl.textContent = Math.round(s * 100) + "%";
+}
+const fit = () => apply(Math.min((wrap.clientWidth - 20) / W, 1.6), 0, 0);
+$("zin").onclick = () => apply(s * 1.25); $("zout").onclick = () => apply(s / 1.25);
+$("fit").onclick = fit; $("one").onclick = () => apply(1);
+if (document.fullscreenEnabled) {
+  $("fs").onclick = () => document.fullscreenElement ? document.exitFullscreen() : wrap.requestFullscreen();
+  document.addEventListener("fullscreenchange", () => setTimeout(fit, 50));
+} else $("fs").style.display = "none";
+wrap.addEventListener("wheel", (e) => { if (!e.ctrlKey) return; e.preventDefault();
+  const r = wrap.getBoundingClientRect(); apply(s * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - r.left, e.clientY - r.top); }, {passive: false});
+let drag = null;
+wrap.addEventListener("mousedown", (e) => { drag = {x: e.clientX, y: e.clientY, l: wrap.scrollLeft, t: wrap.scrollTop}; wrap.classList.add("drag"); });
+window.addEventListener("mouseup", () => { drag = null; wrap.classList.remove("drag"); });
+window.addEventListener("mousemove", (e) => { if (drag) { wrap.scrollLeft = drag.l - (e.clientX - drag.x); wrap.scrollTop = drag.t - (e.clientY - drag.y); } });
+
+let horizTouched = false;
+$("depth").oninput = () => { $("depthVal").textContent = $("depth").value; if (!horizTouched) $("horiz").checked = +$("depth").value >= 3; loadTree(); };
+$("horiz").onchange = () => { horizTouched = true; loadTree(); };
+async function loadTree() {
+  const d = $("depth").value, url = `output/tree_svg/tree_d${d}_${$("horiz").checked ? "ngang" : "doc"}.svg`;
+  $("dl").href = url; $("dl").setAttribute("download", `id3_tree_${d}_tang.svg`);
+  try {
+    if (!cache[url]) { const r = await fetch(url); if (!r.ok) throw 0; cache[url] = await r.text(); }
+    const t = cache[url]; wrap.innerHTML = t.slice(t.indexOf("<svg"));
+    svg = wrap.querySelector("svg"); const vb = svg.viewBox.baseVal; W = vb.width; H = vb.height;
+    svg.removeAttribute("width"); svg.removeAttribute("height"); s = 1; fit();
+  } catch (e) { wrap.innerHTML = '<p style="padding:1rem">Không tải được sơ đồ cây (thiếu thư mục output/tree_svg).</p>'; svg = null; }
+}
+
+$("rootIntro").textContent = `ID3 tính Information Gain của 6 thuộc tính trên ${fmt(nTrain)} mẫu học và chọn thuộc tính lớn nhất.`;
+const gains = Object.entries(st.root_gain_table).sort((a, b) => b[1] - a[1]);
+hbars($("gainChart"), gains.map(([a, g]) => ({label: a, value: g, color: a === st.root_attribute ? "#1D4ED8" : "#94A3B8", text: g.toFixed(3), tip: g.toFixed(4)})),
+  0.3, ["0", "0,05", "0,10", "0,15", "0,20", "0,25", "0,30"]);
+$("gainChart").insertAdjacentHTML("beforeend", '<div class="caption" style="text-align:center;margin-top:4px">Information Gain (bit)</div>');
+
+const rc = D.rootCalc;
+const terms = CLASSES.map(c => `-\\tfrac{${rc.counts[c]}}{${rc.n}}\\log_2\\tfrac{${rc.counts[c]}}{${rc.n}}`).join(" ");
+const rootDiv = $("rootCalc");
+rootDiv.innerHTML = `<p><b>Bước 1.</b> Lượng thông tin cần để phân loại một phần tử trong D (Entropy của D), với pᵢ là tỷ lệ phần tử thuộc lớp Cᵢ:</p>
+<div class="tex" data-tex="Info(D) = -\\sum_{i=1}^{m} p_i \\log_2(p_i)"></div>
+<div class="tex" data-tex="Info(D) = ${terms} = ${rc.infoD.toFixed(4)}"></div>
+<p><b>Bước 2.</b> Thuộc tính A chia D thành v phân hoạch D₁…Dᵥ; tính lượng thông tin sau khi chia và độ lợi thông tin. ID3 chọn thuộc tính có Gain lớn nhất:</p>
+<div class="tex" data-tex="Info_A(D) = \\sum_{j=1}^{v} \\frac{|D_j|}{|D|}\\, Info(D_j) \\qquad Gain(A) = Info(D) - Info_A(D)"></div>
+<div class="tbl" style="max-width:420px"><table id="gainTbl"></table></div>
+<p><b>Bước 3.</b> Gain(${rc.root}) lớn nhất nên ${rc.root} làm nút gốc. Các phân hoạch của nút gốc:</p>
+<div class="tbl" style="max-width:640px"><table id="partTbl"></table></div>
+<p><b>Bước 4.</b> Lặp lại trên từng phân hoạch với các thuộc tính còn lại. Theo thuật toán trong bài giảng, một nhánh dừng khi: mọi mẫu cùng lớp → lá mang lớp đó; hết thuộc tính → lá mang lớp đa số; phân hoạch rỗng → lá mang lớp đa số của nút cha. Trên dữ liệu này cây có ${st.rules_with_support} lá thuần nhất và ${st.empty_leaves} lá từ phân hoạch rỗng.</p>`;
+table($("gainTbl"), ["Thuộc tính", "Info_A(D)", "Gain(A)"], rc.gains.map(r => [r.a, f4(r.infoA), f4(r.gain)]), ["Info_A(D)", "Gain(A)"]);
+table($("partTbl"), ["Giá trị", "|Dⱼ|", ...CLASSES, "Info(Dⱼ)"], rc.parts.map(p => [p.v, p.n, ...CLASSES.map(c => p[c]), f4(p.info)]), ["|Dⱼ|", ...CLASSES, "Info(Dⱼ)"]);
+
+let ruleSel = "Tất cả";
+$("ruleFilter").innerHTML = ["Tất cả", ...CLASSES].map(c => `<button data-r="${c}">${c}</button>`).join("");
+$("ruleFilter").onclick = (e) => { const r = e.target.dataset.r; if (r) { ruleSel = r; renderRules(); } };
+function renderRules() {
+  document.querySelectorAll("#ruleFilter button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === ruleSel));
+  const shown = ruleSel === "Tất cả" ? D.rules : D.rules.filter(r => r.then === ruleSel);
+  $("ruleCount").textContent = `${shown.length} luật, sắp theo số mẫu học ủng hộ.`;
+  table($("ruleTable"), ["Nếu", "Thì", "Số mẫu", "Số điều kiện"], shown.map(r => [esc(r.if).replace(/  /g, "&nbsp;&nbsp;"), r.then, r.n, r.k]), ["Số mẫu", "Số điều kiện"]);
+}
+renderRules();
+
+// ================= ĐÁNH GIÁ
+$("evalMetrics").innerHTML =
+  metric("Accuracy (tập kiểm tra)", (ev.accuracy * 100).toFixed(2) + "%", `+${((ev.accuracy - base.accuracy) * 100).toFixed(2)} điểm so với đoán toàn unacc`) +
+  metric("Macro-F1", f4(ev.macro_f1), "+" + f4(ev.macro_f1 - base.macro_f1)) +
+  metric(`Accuracy ${cv.k}-fold`, (cv.accuracy_mean * 100).toFixed(2) + "%", `± ${(cv.accuracy_std * 100).toFixed(2)}`, true) +
+  metric(`Macro-F1 ${cv.k}-fold`, f4(cv.macro_f1_mean), `± ${f4(cv.macro_f1_std)}`, true);
+$("evalCaption").textContent = `Tập kiểm tra gồm ${nTest} mẫu tách riêng (20%, giữ tỷ lệ nhãn), không dùng khi xây cây. Mô hình đối chứng luôn đoán nhãn phổ biến nhất (unacc).`;
+
+const labels = ev.labels, cm = ev.confusion_matrix, cmax = Math.max(...cm.flat());
+function blues(t) { // matplotlib Blues: #f7fbff → #08306b
+  const a = [247, 251, 255], b = [8, 48, 107];
+  return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * t)).join(",")})`;
+}
+$("cm").innerHTML = "<thead><tr><th></th>" + labels.map(l => `<th class="num">Đoán: ${l}</th>`).join("") + "</tr></thead><tbody>" +
+  cm.map((row, i) => `<tr><th style="position:static">Thật: ${labels[i]}</th>` + row.map(v => {
+    const t = v / cmax; return `<td class="num" style="background:${blues(t)};color:${t > .5 ? "#fff" : "#000"}">${v}</td>`;
+  }).join("") + "</tr>").join("") + "</tbody>";
+$("cmCap").textContent = `Đường chéo là số mẫu đoán đúng: ${cm.reduce((s, r, i) => s + r[i], 0)}/${nTest}.`;
+table($("perClass"), ["Lớp", "TP", "FP", "FN", "TN", "Accuracy(cᵢ)", "Precision", "Recall", "F1"], labels.map((c, i) => {
+  const tp = cm[i][i], fn = cm[i].reduce((a, b) => a + b) - tp, fp = cm.reduce((a, r) => a + r[i], 0) - tp, tn = nTest - tp - fn - fp, m = ev.per_class[c];
+  return [c, tp, fp, fn, tn, f4((tp + tn) / nTest), f4(m.precision), f4(m.recall), f4(m.f1_score)];
+}), ["TP", "FP", "FN", "TN", "Accuracy(cᵢ)", "Precision", "Recall", "F1"]);
+$("errText").textContent = `${el.errors_from_empty_leaves}/${el.total_errors} lỗi rơi vào trường hợp tập huấn luyện không có cấu hình tương tự (lá không có mẫu học). Ở nhóm này mô hình chỉ đúng ${el.empty_leaf_correct}/${el.empty_leaf_samples} mẫu, trong khi các mẫu còn lại đúng ${el.other_correct}/${el.other_samples} (${(el.other_accuracy * 100).toFixed(1)}%).`;
+$("cvSum").textContent = `Chi tiết ${cv.k} lần đánh giá chéo`;
+$("cvText").textContent = `Tỷ lệ lỗi trung bình của ${cv.k} fold: ${((1 - cv.accuracy_mean) * 100).toFixed(2)}% (= 1 − Accuracy trung bình).`;
+table($("cvTable"), ["Lần", "Số mẫu kiểm tra", "Accuracy", "Macro-F1"], cv.folds.map(f => [f.fold, f.test_samples, f4(f.accuracy), f4(f.macro_f1)]), ["Lần", "Số mẫu kiểm tra", "Accuracy", "Macro-F1"]);
+
+// ================= DỮ LIỆU
+const counts = Object.fromEntries(CLASSES.map(c => [c, ROWS.filter(r => r[6] === c).length]));
+hbars($("distChart"), CLASSES.map(c => ({label: c, value: counts[c], color: COLOR[c], text: fmt(counts[c]), tip: `${counts[c]} mẫu (${(counts[c] / ROWS.length * 100).toFixed(1)}%)`})),
+  1300, ["0", "200", "400", "600", "800", "1.000", "1.200"]);
+$("distChart").insertAdjacentHTML("beforeend", '<div class="caption" style="text-align:center;margin-top:4px">Số mẫu</div>');
+table($("attrTable"), ["Thuộc tính", "Ý nghĩa", "Giá trị"], FEAT.map(a => [a, esc(D.attrVi[a]), D.values[a].join(", ")]));
+
+const fC = new Set(), fS = new Set();
+function chips(el, opts, set) {
+  el.innerHTML = opts.map(o => `<button class="chip" data-o="${o}" aria-pressed="false">${o}</button>`).join("");
+  el.onclick = (e) => { const o = e.target.dataset.o; if (!o) return; set.has(o) ? set.delete(o) : set.add(o);
+    e.target.setAttribute("aria-pressed", set.has(o)); renderData(); };
+}
+chips($("fClass"), CLASSES, fC); chips($("fSafety"), D.values.safety, fS);
+function renderData() {
+  const view = ROWS.filter(r => (!fC.size || fC.has(r[6])) && (!fS.size || fS.has(r[5])));
+  $("rowCount").textContent = `${view.length} / ${ROWS.length} dòng`;
+  table($("dataTable"), [...FEAT, "class"], view);
+}
+renderData();
+
+// ---------- KaTeX
+function renderTex() {
+  if (!window.katex) return setTimeout(renderTex, 150);
+  document.querySelectorAll(".tex").forEach(el => katex.render(el.dataset.tex, el, {displayMode: true, throwOnError: false}));
+}
+window.addEventListener("load", () => { renderTex(); setTimeout(() => { document.querySelectorAll(".tex:empty").forEach(el => el.textContent = el.dataset.tex); }, 4000); });
+</script>
+</body>
+</html>
